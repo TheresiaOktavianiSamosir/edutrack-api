@@ -1,8 +1,11 @@
 from datetime import datetime, timedelta
 from jose import jwt
+import os
+from dotenv import load_dotenv
+load_dotenv()
 import bcrypt
 
-SECRET_KEY = "ganti-ini-dengan-teks-rahasia-bebas-apapun-yang-panjang"
+SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # token berlaku 24 jam
 
