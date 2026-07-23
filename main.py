@@ -1,6 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import create_engine
 import models
 import schemas
 import auth
@@ -9,6 +8,7 @@ from database import engine, get_db
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
 
 @app.get("/")
 def read_root():
@@ -64,6 +64,7 @@ def delete_course(course_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Course berhasil dihapus"}
 
+
 # ---- CRUD Materi ----
 
 @app.post("/materials", response_model=schemas.MaterialResponse)
@@ -106,6 +107,7 @@ def delete_material(material_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Materi berhasil dihapus"}
 
+
 # ---- Autentikasi ----
 
 @app.post("/register", response_model=schemas.UserResponse)
@@ -130,3 +132,70 @@ def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
 
     access_token = auth.create_access_token(data={"user_id": db_user.id, "role": db_user.role})
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+# ---- Enrollment ----
+
+@app.post("/enrollments", response_model=schemas.EnrollmentResponse)
+def create_enrollment(enrollment: schemas.EnrollmentCreate, db: Session = Depends(get_db)):
+    existing = db.query(models.Enrollment).filter(
+        models.Enrollment.student_id == enrollment.student_id,
+        models.Enrollment.course_id == enrollment.course_id
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Student sudah terdaftar di course ini")
+
+    new_enrollment = models.Enrollment(**enrollment.dict())
+    db.add(new_enrollment)
+    db.commit()
+    db.refresh(new_enrollment)
+    return new_enrollment
+
+
+@app.get("/students/{student_id}/enrollments", response_model=list[schemas.EnrollmentResponse])
+def get_student_enrollments(student_id: int, db: Session = Depends(get_db)):
+    return db.query(models.Enrollment).filter(models.Enrollment.student_id == student_id).all()
+
+
+@app.get("/courses/{course_id}/enrollments", response_model=list[schemas.EnrollmentResponse])
+def get_course_enrollments(course_id: int, db: Session = Depends(get_db)):
+    return db.query(models.Enrollment).filter(models.Enrollment.course_id == course_id).all()
+
+
+# ---- Tandai Materi Selesai ----
+
+@app.patch("/materials/{material_id}/done", response_model=schemas.MaterialProgressResponse)
+def mark_material_done(material_id: int, student_id: int, db: Session = Depends(get_db)):
+    material = db.query(models.Material).filter(models.Material.id == material_id).first()
+    if not material:
+        raise HTTPException(status_code=404, detail="Materi tidak ditemukan")
+
+    progress = db.query(models.MaterialProgress).filter(
+        models.MaterialProgress.student_id == student_id,
+        models.MaterialProgress.material_id == material_id
+    ).first()
+
+    if progress:
+        progress.status_selesai = True
+    else:
+        progress = models.MaterialProgress(
+            student_id=student_id,
+            material_id=material_id,
+            status_selesai=True
+        )
+        db.add(progress)
+
+    db.commit()
+    db.refresh(progress)
+    return progress
+
+
+@app.get("/students/{student_id}/courses/{course_id}/progress", response_model=list[schemas.MaterialProgressResponse])
+def get_progress_by_course(student_id: int, course_id: int, db: Session = Depends(get_db)):
+    materials = db.query(models.Material).filter(models.Material.course_id == course_id).all()
+    material_ids = [m.id for m in materials]
+
+    return db.query(models.MaterialProgress).filter(
+        models.MaterialProgress.student_id == student_id,
+        models.MaterialProgress.material_id.in_(material_ids)
+    ).all()

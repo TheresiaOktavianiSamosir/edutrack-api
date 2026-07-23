@@ -1,12 +1,13 @@
 from pydantic import BaseModel
 from typing import Optional
-from datetime import date
+from datetime import date as date_type
+
 
 class CourseBase(BaseModel):
     judul: str
     deskripsi: str
     tipe: str
-    deadline: Optional[date] = None
+    deadline: Optional[date_type] = None
     benefit: Optional[str] = None
 
 class CourseCreate(CourseBase):
@@ -18,6 +19,7 @@ class CourseResponse(CourseBase):
 
     class Config:
         from_attributes = True
+
 
 class MaterialBase(BaseModel):
     course_id: int
@@ -33,6 +35,7 @@ class MaterialResponse(MaterialBase):
 
     class Config:
         from_attributes = True
+
 
 class UserCreate(BaseModel):
     email: str
@@ -54,4 +57,28 @@ class UserLogin(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
-    
+
+
+class EnrollmentCreate(BaseModel):
+    student_id: int
+    course_id: int
+
+class EnrollmentResponse(BaseModel):
+    id: int
+    student_id: int
+    course_id: int
+    tanggal_enroll: Optional[date_type] = None
+
+    class Config:
+        from_attributes = True
+
+
+class MaterialProgressResponse(BaseModel):
+    id: int
+    student_id: int
+    material_id: int
+    status_selesai: bool
+
+    class Config:
+        from_attributes = True
+        

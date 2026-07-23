@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Text, Date, Boolean, ForeignKey
 from database import Base
+from datetime import date
 
 class User(Base):
     __tablename__ = "users"
@@ -47,5 +48,5 @@ class Enrollment(Base):
     id = Column(Integer, primary_key=True, index=True)
     student_id = Column(Integer, ForeignKey("users.id"))
     course_id = Column(Integer, ForeignKey("courses.id"))
-    tanggal_enroll = Column(Date)
+    tanggal_enroll = Column(Date, default=date.today)
     
