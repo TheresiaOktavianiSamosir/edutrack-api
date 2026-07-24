@@ -199,3 +199,39 @@ def get_progress_by_course(student_id: int, course_id: int, db: Session = Depend
         models.MaterialProgress.student_id == student_id,
         models.MaterialProgress.material_id.in_(material_ids)
     ).all()
+
+# ---- Dashboard Progres ----
+
+@app.get("/students/{student_id}/dashboard", response_model=list[schemas.DashboardCourseProgress])
+def get_dashboard(student_id: int, db: Session = Depends(get_db)):
+    enrollments = db.query(models.Enrollment).filter(models.Enrollment.student_id == student_id).all()
+
+    dashboard_data = []
+
+    for enrollment in enrollments:
+        course = db.query(models.Course).filter(models.Course.id == enrollment.course_id).first()
+        if not course:
+            continue
+
+        materials = db.query(models.Material).filter(models.Material.course_id == course.id).all()
+        total_materi = len(materials)
+        material_ids = [m.id for m in materials]
+
+        materi_selesai = db.query(models.MaterialProgress).filter(
+            models.MaterialProgress.student_id == student_id,
+            models.MaterialProgress.material_id.in_(material_ids),
+            models.MaterialProgress.status_selesai == True
+        ).count()
+
+        persentase = (materi_selesai / total_materi * 100) if total_materi > 0 else 0
+
+        dashboard_data.append(schemas.DashboardCourseProgress(
+            course_id=course.id,
+            judul_course=course.judul,
+            total_materi=total_materi,
+            materi_selesai=materi_selesai,
+            persentase=round(persentase, 2)
+        ))
+
+    return dashboard_data
+    

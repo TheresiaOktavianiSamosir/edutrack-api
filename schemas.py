@@ -81,4 +81,11 @@ class MaterialProgressResponse(BaseModel):
 
     class Config:
         from_attributes = True
-        
+    
+class DashboardCourseProgress(BaseModel):
+    course_id: int
+    judul_course: str
+    total_materi: int
+    materi_selesai: int
+    persentase: float
+    
